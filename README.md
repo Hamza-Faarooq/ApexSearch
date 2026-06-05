@@ -8,12 +8,13 @@
 *Finding a specific 5-second crash in a 2-hour Formula 1 broadcast is a nightmare. So, I built a multimodal AI system that finds it for you, listens to the engines, and commentates on the event in real time.*
 
 ## 🚀 Live Demo
-**Try the deployed application here:** [ApexSearch]((https://tm-vettel-victoriangpt.hf.space/))
+## Live Demo
+
+🚀 **Try the deployed application here:** [ApexSearch](https://apexsearch.streamlit.app/)
 
 <div align="center">
-  <img src="app.png" alt="VictorianGPT Web Interface" width="850"/>
+  <img src="app.png" alt="ApexSearch Web Interface" width="850"/>
 </div>
-
 ---
 
 ## 🏁 The Pitch
