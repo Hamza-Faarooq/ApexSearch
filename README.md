@@ -7,6 +7,13 @@
 
 *Finding a specific 5-second crash in a 2-hour Formula 1 broadcast is a nightmare. So, I built a multimodal AI system that finds it for you, listens to the engines, and commentates on the event in real time.*
 
+## 🚀 Live Demo
+**Try the deployed application here:** [ApexSearch]((https://tm-vettel-victoriangpt.hf.space/))
+
+<div align="center">
+  <img src="app.png" alt="VictorianGPT Web Interface" width="850"/>
+</div>
+
 ---
 
 ## 🏁 The Pitch
@@ -44,8 +51,3 @@ To get high-energy F1 commentary without hallucinating (e.g., confusing an F1 ca
 
 ---
 
-## 🚀 Quick Start (Run it Locally)
-
-Want to run ApexSearch on your own machine? It’s designed to be completely dynamically ingested.
-
-### 1. Clone the repository
