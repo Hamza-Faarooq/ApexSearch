@@ -1,4 +1,4 @@
-readme_content = """# 🏎️ ApexSearch: Audio-Visual RAG & Multimodal Video Retrieval Engine
+# 🏎️ ApexSearch: Audio-Visual RAG & Multimodal Video Retrieval Engine
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35.0-FF4B4B.svg)](https://streamlit.io/)
