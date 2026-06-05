@@ -13,7 +13,7 @@
 🚀 **Try the deployed application here:** [ApexSearch](https://apexsearch.streamlit.app/)
 
 <div align="center">
-  <img src="app.png" alt="ApexSearch Web Interface" width="850"/>
+  <img src="f1.png" alt="ApexSearch Web Interface" width="850"/>
 </div>
 ---
 
