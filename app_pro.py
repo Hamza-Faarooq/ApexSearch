@@ -18,9 +18,10 @@ st.set_page_config(page_title="ApexSearch Pro", layout="wide", page_icon="🏎�
 st.title("🏎️ ApexSearch Pro: Multi-Modal F1 RAG Platform")
 
 # Paths
-UPLOAD_DIR = "/content/custom_upload"
+UPLOAD_DIR = "custom_upload"
 CUSTOM_FRAMES_DIR = os.path.join(UPLOAD_DIR, "frames")
-DEFAULT_FRAMES_DIR = "/content/data/frames"
+DEFAULT_FRAMES_DIR = "data/frames"
+
 os.makedirs(CUSTOM_FRAMES_DIR, exist_ok=True)
 
 device = "cpu" # FORCED TO CPU FOR CLOUD DEPLOYMENT
