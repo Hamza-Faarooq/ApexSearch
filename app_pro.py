@@ -1,4 +1,3 @@
-%%writefile app_pro.py
 import streamlit as st
 import cv2
 import os
