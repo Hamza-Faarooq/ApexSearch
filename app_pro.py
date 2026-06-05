@@ -25,8 +25,8 @@ DEFAULT_FRAMES_DIR = "data/frames"
 os.makedirs(CUSTOM_FRAMES_DIR, exist_ok=True)
 
 device = "cpu" # FORCED TO CPU FOR CLOUD DEPLOYMENT
-groq_client = Groq() # Reads GROQ_API_KEY from environment/secrets
-
+# Explicitly grab the key from Streamlit's secure secrets dictionary
+groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
 # --- Agent 1: The Observer (Groq Vision API) ---
 def encode_image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
