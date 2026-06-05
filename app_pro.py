@@ -8,10 +8,10 @@ import torch
 import gc
 import librosa
 import numpy as np
+import base64
 from PIL import Image
 from moviepy.editor import VideoFileClip
 from transformers import CLIPProcessor, CLIPModel, ClapProcessor, ClapModel
-from transformers import BitsAndBytesConfig, pipeline
 from groq import Groq
 
 # --- Page Setup ---
@@ -24,23 +24,19 @@ CUSTOM_FRAMES_DIR = os.path.join(UPLOAD_DIR, "frames")
 DEFAULT_FRAMES_DIR = "/content/data/frames"
 os.makedirs(CUSTOM_FRAMES_DIR, exist_ok=True)
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-groq_client = Groq() # Reads GROQ_API_KEY from environment
+device = "cpu" # FORCED TO CPU FOR CLOUD DEPLOYMENT
+groq_client = Groq() # Reads GROQ_API_KEY from environment/secrets
 
-# --- Lazy Loading Models to Save VRAM ---
-import base64
-
+# --- Agent 1: The Observer (Groq Vision API) ---
 def encode_image_to_base64(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 def extract_clinical_json_via_api(image_path):
-    """Agent 1: The Observer (Now running via Groq Cloud instead of Local GPU)"""
     base64_image = encode_image_to_base64(image_path)
-    
     try:
         response = groq_client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview", # Groq's blazing fast vision model
+            model="llama-3.2-11b-vision-preview",
             messages=[
                 {
                     "role": "user",
@@ -57,6 +53,23 @@ def extract_clinical_json_via_api(image_path):
     except Exception as e:
         return '{"event_type": "unknown", "entities_involved": ["car", "track"], "intensity": "medium"}'
 
+# --- Agent 2: The Commentator (Groq Text API) ---
+def generate_croft_commentary(clinical_json):
+    system_prompt = """You are the world’s most energetic, passionate, and iconic Formula 1 television commentator David Croft. 
+    Translate the clinical JSON payload of a race scene into exactly ONE loud, thrilling sentence of live commentary. 
+    Do NOT use AI language like 'The JSON shows' or 'In the image'. Just scream the action using heavy F1 terminology!"""
+    try:
+        response = groq_client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": clinical_json}],
+            temperature=0.85,
+            max_tokens=100
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return "AND IT'S UNBELIEVABLE SCENES ACROSS THE TRACK!"
+
+# --- Encoders for Local Search ---
 @st.cache_resource
 def load_encoders():
     clip = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(device)
@@ -126,22 +139,6 @@ def process_custom_video(video_path):
     
     return v_idx, v_names, a_idx, a_names
 
-# --- Generator Agent ---
-def generate_croft_commentary(clinical_json):
-    system_prompt = """You are the world’s most energetic, passionate, and iconic Formula 1 television commentator David Croft. 
-    Translate the clinical JSON payload of a race scene into exactly ONE loud, thrilling sentence of live commentary. 
-    Do NOT use AI language like 'The JSON shows' or 'In the image'. Just scream the action using heavy F1 terminology!"""
-    try:
-        response = groq_client.chat.completions.create(
-            model="llama3-70b-8192",
-            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": clinical_json}],
-            temperature=0.85,
-            max_tokens=100
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        return "AND IT'S UNBELIEVABLE SCENES ACROSS THE TRACK!"
-
 # --- UI Sidebar Selection ---
 st.sidebar.header("Configuration")
 mode = st.sidebar.radio("Select Video Source:", ["Use Default F1 Database", "Upload Custom F1 Video Clip"])
@@ -155,21 +152,23 @@ if mode == "Use Default F1 Database":
     st.subheader("📁 Searching Default F1 Video Collection")
     st.write("No video needed! Type your query below to automatically search through our pre-indexed race collection.")
     
-    # Load static pre-saved vector metadata instantly without hitting GPU memory
-    with open("/content/data/frame_embeddings.pkl", "rb") as f:
-        v_data = pickle.load(f)
-    with open("/content/data/audio_embeddings.pkl", "rb") as f:
-        a_data = pickle.load(f)
+    try:
+        with open("frame_embeddings.pkl", "rb") as f:
+            v_data = pickle.load(f)
+        with open("audio_embeddings.pkl", "rb") as f:
+            a_data = pickle.load(f)
+            
+        v_index = faiss.IndexFlatIP(v_data["embeddings"].shape[1])
+        v_index.add(v_data["embeddings"])
+        v_filenames = v_data["filenames"]
         
-    v_index = faiss.IndexFlatIP(v_data["embeddings"].shape[1])
-    v_index.add(v_data["embeddings"])
-    v_filenames = v_data["filenames"]
-    
-    a_index = faiss.IndexFlatIP(a_data["embeddings"].shape[1])
-    a_index.add(a_data["embeddings"])
-    a_filenames = a_data["filenames"]
-    
-    active_frames_dir = DEFAULT_FRAMES_DIR
+        a_index = faiss.IndexFlatIP(a_data["embeddings"].shape[1])
+        a_index.add(a_data["embeddings"])
+        a_filenames = a_data["filenames"]
+        
+        active_frames_dir = DEFAULT_FRAMES_DIR
+    except FileNotFoundError:
+        st.warning("⚠️ Default embeddings not found! If deployed, make sure frame_embeddings.pkl and audio_embeddings.pkl are in the repo.")
 
 else:
     st.subheader("📤 Dynamic Video Ingestion Platform")
@@ -235,31 +234,36 @@ if st.button("Execute Intelligence Query") and query:
         
         # Route to appropriate source file
         if mode == "Use Default F1 Database":
-            video_path_to_render = f"/content/{vid_prefix.replace('v1_', 'f1_').replace('v2_', 'f1_').replace('v3_', 'f1_').replace('v4_', 'f1_')}.mp4"
-            # Quick fallback text correction patch
-            if "pit" in vid_prefix: video_path_to_render = "/content/f1_sample.mp4"
+            # For deployment, ensure the MP4s are in the same folder as app_pro.py
+            video_path_to_render = f"{vid_prefix.replace('v1_', 'f1_').replace('v2_', 'f1_').replace('v3_', 'f1_').replace('v4_', 'f1_')}.mp4"
+            if "pit" in vid_prefix: video_path_to_render = "f1_sample.mp4"
             
         st.success(f"🎯 Event located at {time_sec} seconds in video stream [{vid_prefix}]!")
         
         col1, col2 = st.columns([2, 1])
         with col1:
-            st.video(video_path_to_render, start_time=time_sec)
+            try:
+                st.video(video_path_to_render, start_time=time_sec)
+            except Exception:
+                st.warning(f"Video file {video_path_to_render} not found. Ensure it is uploaded to your GitHub repo!")
             
         with col2:
             st.subheader("🎙️ Live Broadcast AI Commentary")
-            # Pull context frames
-            context_frames = [
-                os.path.join(active_frames_dir, f"{best_filename}.jpg") if mode != "Use Default F1 Database" else os.path.join(active_frames_dir, f"{vid_prefix}_frame_{time_sec:04d}.jpg")
-            ]
-            images = [Image.open(p).convert("RGB") for p in context_frames if os.path.exists(p)]
+            # Determine the correct frame path
+            if mode != "Use Default F1 Database":
+                frame_path = os.path.join(active_frames_dir, f"{best_filename}.jpg")
+            else:
+                frame_path = os.path.join(active_frames_dir, f"{vid_prefix}_frame_{time_sec:04d}.jpg")
             
-            if images:
-                vlm_model = load_vlm()
-                prompt = "USER: <image>\nAnalyze this frame from an F1 stream. Output ONLY a raw clinical JSON string with keys: 'event_type', 'entities_involved', 'intensity'. No conversational padding. ASSISTANT:"
-                res = vlm_model(images=images, text=prompt, max_new_tokens=40)
-                clinical_json = res[0]['generated_text'].split('ASSISTANT:')[-1].strip()
+            if os.path.exists(frame_path):
+                with st.spinner("🤖 Observer Agent translating visual data..."):
+                    clinical_json = extract_clinical_json_via_api(frame_path)
                 
-                commentary = generate_croft_commentary(clinical_json)
-                st.info(commentary)
+                with st.spinner("🎙️ Generating Commentary..."):
+                    commentary = generate_croft_commentary(clinical_json)
+                
+                st.info(f"**{commentary}**")
+            else:
+                st.warning("Frame image not found for commentary generation.")
     else:
         st.error("Please load or select a database mode before executing query.")
