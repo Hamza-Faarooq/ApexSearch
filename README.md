@@ -15,7 +15,7 @@
 <div align="center">
   <img src="f1.png" alt="ApexSearch Web Interface" width="850"/>
 </div>
----
+--- 
 
 ## 🏁 The Pitch
 Standard video classifiers just output static labels (e.g., "Crash: 98%"). I wanted to build a **true retrieval engine** that actually *understands* both the sights and sounds of a high-speed sports broadcast. 
