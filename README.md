@@ -6,7 +6,7 @@
 [![Groq API](https://img.shields.io/badge/Groq-Llama%203-black.svg)](https://groq.com/)
 
 *Finding a specific 5-second crash in a 2-hour Formula 1 broadcast is a nightmare. So, I built a multimodal AI system that finds it for you, listens to the engines, and commentates on the event in real time.*
- 
+  
 ## 🚀 Live Demo
 ## Live Demo
 
